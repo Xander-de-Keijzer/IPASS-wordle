@@ -2,17 +2,19 @@ import tkinter as tk
 import random
 
 from tkinter import messagebox
+from Data import Result
+
 
 class Window:
     def __init__(self, columns: int, rows: int, box_size: int, check_function) -> None:
-        self.columns = columns
+        self.columns = columns + 3
         self.rows = rows
         self.box_size = box_size
         self.window = tk.Tk()
         self.submit = check_function
-        self.load()
+        self.load_window()
 
-    def load(self):
+    def load_window(self):
         window_width = self.columns * self.box_size + 10
         window_height = self.rows * self.box_size + 120 
 
@@ -23,36 +25,41 @@ class Window:
         self.load_labels()
 
         # Create the instructions label
-        self.label_instructions = tk.Label(self.window, text=f"Guess the {self.columns}-letter word:", font=("Helvetica", 14), fg="white", bg="#121213")
+        self.label_instructions = tk.Label(self.window, text=f"Guess the {self.columns-3}-letter word:", font=("Helvetica", 14), fg="white", bg="#121213")
         self.label_instructions.grid(row=1, column=1, columnspan=self.columns, padx=5, pady=10)
 
         # Create the submit button
         self.button_submit = tk.Button(self.window, relief="flat", text="Submit", font=("Helvetica", 14), command=self.submit, fg="#ffffff", bg="#818384")
         self.button_submit.grid(row=self.rows+3, column=1, columnspan=self.columns, padx=5, pady=10)
 
-        # Create empty rows
-        self.empty_row_top = tk.Label(self.window, text="", bg="#121213")
-        self.empty_row_top.grid(row=0)
-        self.empty_row_bottom = tk.Label(self.window, text="", bg="#121213")
-        self.empty_row_bottom.grid(row=self.rows+4)
+        # Create list of best words
+        self.best_word_title = tk.Label(self.window, text=f"Best words:", font=("Helvetica", 14), fg="white", bg="#121213")
+        self.best_word_title.grid(row=1, column=self.columns-1, columnspan=self.columns, padx=15, pady=10)
+
+        self.best_words = []
+        for i in range(6):
+            best_word = tk.Label(self.window, text=f"_____", font=("Helvetica", 14), fg="white", bg="#121213")
+            best_word.grid(row=i+2, column=self.columns-1, columnspan=self.columns, padx=15, pady=10)
+            self.best_words.append(best_word)
 
     def load_labels(self):
         self.guess_labels = []
         for row in range(self.rows):
             guess_row = []
-            for i in range(self.columns):
+            for column in range(self.columns - 3):
                 frame = tk.Frame(self.window, highlightthickness=1, highlightbackground="#3a3a3c", borderwidth=1, bg="#121213", width=self.box_size, height=self.box_size)
-                frame.grid(row=row+2, column=i+1, padx=3, pady=3)
+                frame.grid(row=row+2, column=column+2, padx=3, pady=3)
                 label = tk.Label(frame, text="", font=("Helvetica", 24, "bold"), width=2, height=1, fg="white", bg="#1a1a1c")
                 label.pack(fill=tk.BOTH, expand=True)
                 guess_row.append(label)
             self.guess_labels.append(guess_row)
 
+
 class Wordle:
-    def __init__(self, guesses: list[str], answers: list[str]) -> None:
-        self.guesses = guesses
-        self.answers = answers
-        self.guesses.extend(answers)
+    def __init__(self, allowed_guesses: list[str], posible_answers: list[str]) -> None:
+        self.guesses = allowed_guesses
+        self.answers = posible_answers
+        self.guesses.extend(posible_answers)
         self.target_word = random.choice(self.answers)
         self.rows = 6
         self.window = Window(len(self.target_word), self.rows, 60, self.check_guess)
@@ -91,29 +98,32 @@ class Wordle:
         else:
             self.attempts += 1
 
-            # Check the correctness of the guess
-            correct_positions = []
-            correct_letters = []
-            letter_counts = {}
+            for index, letter in enumerate(user_guess):
+                
 
-            for i in range(len(self.target_word)):
+            # # Check the correctness of the guess
+            # correct_positions = []
+            # correct_letters = []
+            # letter_counts = {}
 
-                if user_guess[i] == self.target_word[i]:
-                    correct_positions.append(i)
-                    self.guess[i] = user_guess[i]
-                    if user_guess[i] in letter_counts:
-                        letter_counts[user_guess[i]] += 1
-                    else:
-                        letter_counts[user_guess[i]] = 1
-                else:
-                    contains = user_guess[i] in self.target_word
-                    not_visit = user_guess[i] not in letter_counts or letter_counts[user_guess[i]] < self.target_word.count(user_guess[i])
-                    if contains and not_visit:
-                        correct_letters.append(i)
-                        if user_guess[i] in letter_counts:
-                            letter_counts[user_guess[i]] += 1
-                        else:
-                            letter_counts[user_guess[i]] = 1
+            # for i in range(len(self.target_word)):
+
+            #     if user_guess[i] == self.target_word[i]:
+            #         correct_positions.append(i)
+            #         self.guess[i] = user_guess[i]
+            #         if user_guess[i] in letter_counts:
+            #             letter_counts[user_guess[i]] += 1
+            #         else:
+            #             letter_counts[user_guess[i]] = 1
+            #     else:
+            #         contains = user_guess[i] in self.target_word
+            #         not_visit = user_guess[i] not in letter_counts or letter_counts[user_guess[i]] < self.target_word.count(user_guess[i])
+            #         if contains and not_visit:
+            #             correct_letters.append(i)
+            #             if user_guess[i] in letter_counts:
+            #                 letter_counts[user_guess[i]] += 1
+            #             else:
+            #                 letter_counts[user_guess[i]] = 1
 
             # Update the guess labels
             for i in range(len(self.target_word)):
@@ -137,16 +147,25 @@ class Wordle:
                 self.current_box = 0
                 self.guess = [" "] * len(self.target_word)
 
-# Read the valid guesses from the file
-with open("wordle-nyt-allowed-guesses.txt", "r") as f:
-    valid_guesses = [word.strip().upper() for word in f]
+def load_data() -> tuple[list[str]]:
+    # Read the valid guesses from the file
+    with open("wordle-nyt-allowed-guesses.txt", "r") as f:
+        valid_guesses = [word.strip().upper() for word in f]
 
-# Read the valid secret words from the file
-with open("wordle-nyt-answers-alphabetical.txt", "r") as f:
-    valid_secret_words = [word.strip().upper() for word in f]
+    # Read the valid secret words from the file
+    with open("wordle-nyt-answers-alphabetical.txt", "r") as f:
+        valid_secret_words = [word.strip().upper() for word in f]
 
-# Add valid secret words to valid guesses
-valid_guesses.extend(valid_secret_words)
+    # All valid secrets word can also be guessed (ofcourse)
+    valid_guesses.extend(valid_secret_words)
+    return valid_guesses, valid_secret_words
 
-wordle = Wordle(valid_guesses, valid_secret_words)
-wordle.start()
+
+def main():
+    valid_guesses, valid_secret_words = load_data()
+    wordle = Wordle(valid_guesses, valid_secret_words)
+    wordle.start()
+
+
+if __name__ == "__main__":
+    main()
