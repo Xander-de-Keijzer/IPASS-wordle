@@ -2,16 +2,17 @@ import tkinter as tk
 import random
 
 from tkinter import messagebox
-from Data import Result
-
+from Data import Result, Filter
+from AI import Solver
 
 class Window:
-    def __init__(self, columns: int, rows: int, box_size: int, check_function) -> None:
+    def __init__(self, columns: int, rows: int, box_size: int, check_function, suggested: list[str]) -> None:
         self.columns = columns + 3
         self.rows = rows
         self.box_size = box_size
         self.window = tk.Tk()
         self.submit = check_function
+        self.suggested = suggested
         self.load_window()
 
     def load_window(self):
@@ -38,7 +39,7 @@ class Window:
 
         self.best_words = []
         for i in range(6):
-            best_word = tk.Label(self.window, text=f"_____", font=("Helvetica", 14), fg="white", bg="#121213")
+            best_word = tk.Label(self.window, text=self.suggested[i], font=("Helvetica", 14), fg="white", bg="#121213")
             best_word.grid(row=i+2, column=self.columns-1, columnspan=self.columns, padx=15, pady=10)
             self.best_words.append(best_word)
 
@@ -57,17 +58,17 @@ class Window:
 
 class Wordle:
     def __init__(self, allowed_guesses: list[str], posible_answers: list[str]) -> None:
+        self.solver = Solver(allowed_guesses)
+        self.filter = Filter([])
         self.guesses = allowed_guesses
         self.answers = posible_answers
         self.guesses.extend(posible_answers)
         self.target_word = random.choice(self.answers)
         self.rows = 6
-        self.window = Window(len(self.target_word), self.rows, 60, self.check_guess)
+        self.window = Window(len(self.target_word), self.rows, 60, self.check_guess, self.solver.best_guesses(self.filter, 6))
         self.guess = [" "] * len(self.target_word)
         self.attempts = 0
         self.current_box = 0
-
-        print(self.target_word)
 
     def start(self):
         self.window.window.bind("<Key>", self.key_press)
@@ -97,44 +98,23 @@ class Wordle:
             messagebox.showerror("Invalid Guess", "Please enter a valid guess.")
         else:
             self.attempts += 1
+            result = Result.from_guess(user_guess, self.target_word)
+            self.filter.results.append(result)
 
-            for index, letter in enumerate(user_guess):
-                
-
-            # # Check the correctness of the guess
-            # correct_positions = []
-            # correct_letters = []
-            # letter_counts = {}
-
-            # for i in range(len(self.target_word)):
-
-            #     if user_guess[i] == self.target_word[i]:
-            #         correct_positions.append(i)
-            #         self.guess[i] = user_guess[i]
-            #         if user_guess[i] in letter_counts:
-            #             letter_counts[user_guess[i]] += 1
-            #         else:
-            #             letter_counts[user_guess[i]] = 1
-            #     else:
-            #         contains = user_guess[i] in self.target_word
-            #         not_visit = user_guess[i] not in letter_counts or letter_counts[user_guess[i]] < self.target_word.count(user_guess[i])
-            #         if contains and not_visit:
-            #             correct_letters.append(i)
-            #             if user_guess[i] in letter_counts:
-            #                 letter_counts[user_guess[i]] += 1
-            #             else:
-            #                 letter_counts[user_guess[i]] = 1
-
-            # Update the guess labels
-            for i in range(len(self.target_word)):
-                if self.guess[i] == " ":
-                    self.window.guess_labels[self.attempts-1][i].config(text=self.guess[i], relief=tk.SOLID, borderwidth=1, fg="white", bg="#121213")
-                elif i in correct_positions:
-                    self.window.guess_labels[self.attempts-1][i].config(text=self.guess[i], relief=tk.FLAT, fg="white", bg="#538d4e")  # Green for correct placed letters
-                elif i in correct_letters:
-                    self.window.guess_labels[self.attempts-1][i].config(text=self.guess[i], relief=tk.FLAT, fg="white", bg="#b59f3b")  # Yellow for correct letters in different position
+            best = self.solver.best_guesses(self.filter, 6)
+            for index, label in enumerate(self.window.best_words):
+                if index >= len(best):
+                    label.config(text="_____")
                 else:
-                    self.window.guess_labels[self.attempts-1][i].config(text=self.guess[i], relief=tk.FLAT, fg="white", bg="#3a3a3c")  # Gray for incorrect letters
+                    label.config(text=best[index])
+
+            for index, color in enumerate(result.get_colors()):
+                if color == "green":
+                    self.window.guess_labels[self.attempts-1][index].config(text=self.guess[index], relief=tk.FLAT, fg="white", bg="#538d4e")  # Green for correct placed letters
+                elif color == "yellow":
+                    self.window.guess_labels[self.attempts-1][index].config(text=self.guess[index], relief=tk.FLAT, fg="white", bg="#b59f3b")  # Yellow for correct letters in different position
+                else:
+                    self.window.guess_labels[self.attempts-1][index].config(text=self.guess[index], relief=tk.FLAT, fg="white", bg="#3a3a3c")  # Gray for incorrect letters
 
             # Check for win or loss
             if self.guess == list(self.target_word):
